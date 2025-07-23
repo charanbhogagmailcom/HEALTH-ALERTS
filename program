@@ -1,0 +1,131 @@
+#include <LiquidCrystal.h> #include <stdio.h> #include <Wire.h> #include "dht.h"
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8); unsigned char gchr='x',gchr1='x';
+char rcv,count;
+//char pastnumber[11]=""; #define dht_apin 5
+dht DHT; int fire = 4;
+int buzzer = 7;
+const int sensorPin = A0; // Analog pin A0 connected to the sensor signal int sensorValue = 0;	// Variable to store the sensor reading
+long lastPulseTime = 0;  // To track the time of the last pulse long pulseDuration = 0;  // Duration of each pulse
+int pulseCount = 0;	// Pulse count
+int heartRate = 0;	// Heart rate in beats per minute (BPM) float tempc=0,humc=0;
+int hbv=0,hbv1=0;
+int cntl=0,tempv=0,tempv1=0,x=0,y=0;
+String inputString = "";	// a string to hold incoming databoolean stringComplete = false; // whether the string is complete void beep()
+{
+digitalWrite(buzzer, LOW);delay(1500);digitalWrite(buzzer, HIGH);
+}
+void okcheck(){
+ 
+unsigned char rcr; do{
+rcr = Serial.read();
+}while(rcr != 'K');
+}
+void things_send(){ unsigned char recr;
+Serial.write("AT+CIPMUX=1\r\n");delay(2000); Serial.write("AT+CIPSTART=4,\"TCP\",\"184.106.153.149\",80\r\n"); delay(4000);	//OK LINKED
+Serial.write("AT+CIPSEND=4,77\r\n"); delay(3000);
+Serial.write("GET https://api.thingspeak.com/update?api_key=0PHK2UK998YJ7DFU&");
+}
+void things_rcv()
+{
+unsigned char recr; Serial.write("AT+CIPSTART=4,\"TCP\",\"184.106.153.149\",80\r\n"); delay(4000);
+Serial.write("AT+CIPSEND=4,73\r\n"); delay(3000);
+Serial.write("GET https://api.thingspeak.com/channels/449069/fields/3.json?results=1");
+}
+void things_done()
+{
+Serial.write("\r\n\r\n"); delay(4000);
+}
+void setup()
+{
+Serial.begin(9600);//serialEvent(); pinMode(fire, INPUT); pinMode(buzzer, OUTPUT); pinMode(sensorPin, INPUT); digitalWrite(buzzer, HIGH); lcd.begin(16, 2);
+cd.print(" HEALTH"); lcd.setCursor(0,1);
+lcd.print(" ALERT SYSTEM"); delay(1500);
+delay(1500); wifiinit(); lcd.clear();
+lcd.setCursor(0, 0); //column,row lcd.print("T:");	//2,0
+ 
+lcd.setCursor(8, 0); //column,row lcd.print("H:");	 //10,0 lcd.setCursor(0,1); lcd.print("HR:");	//2,1 lcd.setCursor(8,1);
+// lcd.print("F:");	//10,1
+}
+void loop()
+{
+DHT.read11(dht_apin); tempc = DHT.temperature; humc = DHT.humidity;
+lcd.setCursor(2,0);convertl(tempc); lcd.setCursor(10,0);convertl(humc);
+hbv = analogRead(A0); if(hbv > 700)
+{
+hbv1 = (hbv/10) - 1;
+}
+else
+{
+hbv1=0;
+}
+lcd.setCursor(3,1);convertl(hbv1); delay(3000);
+if(tempc > 38)
+{beep(); lcd.setCursor(13,1);lcd.print("1 "); things_send(); Serial.write("field5="); converts(tempc);
+things_done(); lcd.setCursor(13,1);lcd.print(" "); for(cntl=0;cntl<15;cntl++)
+{lcd.setCursor(13,1);convertl1(cntl);delay(900);} lcd.setCursor(13,1);lcd.print(" ");
+}
+if(humc > 90)
+{beep(); lcd.setCursor(13,1);lcd.print("2 ");
+ 
+things_send(); Serial.write("field6="); converts(humc); things_done();
+lcd.setCursor(13,1);lcd.print(" "); for(cntl=0;cntl<15;cntl++)
+{lcd.setCursor(13,1);convertl1(cntl);delay(900);} lcd.setCursor(13,1);lcd.print(" ");
+}
+/* if(digitalRead(fire) == LOW)
+{
+lcd.setCursor(10,1);lcd.print("ON "); beep(); lcd.setCursor(13,1);lcd.print("3 "); things_send(); Serial.write("field4=00100"); things_done(); lcd.setCursor(13,1);lcd.print(" " for(cntl=0;cntl<15;cntl++)
+{lcd.setCursor(13,1);convertl1(cntl);delay(900);} lcd.setCursor(13,1);lcd.print(" ");
+}
+if(digitalRead(fire) == HIGH)
+{
+lcd.setCursor(10,1);lcd.print("OFF");
+}*/
+}
+int readSerial(char result[])
+{
+int i = 0; while (1)
+{
+while (Serial.available() > 0)
+{
+char inChar = Serial.read(); if (inChar == '\n')
+{
+result[i] = '\0'; Serial.flush(); return 0;
+ 
+}
+if (inChar != '\r') { result[i] = inChar; i++;
+}
+}
+}
+}
+void wifiinit(){
+Serial.write("AT\r\n");	delay(2000); Serial.write("ATE0\r\n"); okcheck();delay(2000); Serial.write("AT+CWMODE=3\r\n");	delay(2000);
+Serial.write("AT+CWJAP=\"project\",\"project1234\"\r\n"); okcheck(); Serial.write("AT+CIPMUX=1\r\n");delay(3000);//	okcheck(); lcd.clear();
+lcd.print("Connected"); delay(3000);
+}
+void converts(unsigned int value){ unsigned int a,b,c,d,e,f,g,h;
+a=value/10000; b=value%10000; c=b/1000; d=b%1000;
+e=d/100; f=d%100;
+g=f/10; h=f%10;
+a=a|0x30; c=c|0x30; e=e|0x30; g=g|0x30; h=h|0x30;
+Serial.write(a); Serial.write(c); Serial.write(e); Serial.write(g); Serial.write(h);}
+void convertl(unsigned int value){ unsigned int a,b,c,d,e,f,g,h;
+ 
+a=value/10000; b=value%10000; c =b/1000; d=b%1000;
+e=d/100; f=d%100;
+g=f/10; h=f%10;
+a=a|0x30; c=c|0x30; e=e|0x30; g=g|0x30; h=h|0x30;
+// lcd.write(a); lcd.write(c);
+lcd.write(e);
+lcd.write(g);
+lcd.write(h);
+}
+void convertl1(unsigned int value){ unsigned int a, b, c, d, e, f, g, h;
+a=value/10000; b=value%10000; c=b/1000; d=b%1000;
+e=d/100; f=d%100;
+g=f/10; h=f%10;
+a=a|0x30; c=c|0x30; e=e|0x30; g=g|0x30; h=h|0x30;
+// lcd. write(a);
+// lcd. write(c);
+// lcd. write(e); lcd. write (g);
+lcd. write (h);}
+ 
